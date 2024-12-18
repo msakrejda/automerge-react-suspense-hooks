@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { useCountUp } from "./hooks";
 
 const App = () => {
