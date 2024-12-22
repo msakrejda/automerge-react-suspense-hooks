@@ -2,7 +2,11 @@ import { pendingThenable, Thenable } from "./thenable";
 
 type Status = "?" | "pending" | "fulfilled" | "rejected";
 
-type Executor<K,V> = (key: K, resolve: (value: V) => void, reject: (e: Error) => void) => void;
+type Executor<K, V> = (
+  key: K,
+  resolve: (value: V) => void,
+  reject: (e: Error) => void,
+) => void;
 
 export default class PromiseCache<Key, Value> {
   private thenables: Map<Key, Thenable<Value>>;
@@ -22,7 +26,7 @@ export default class PromiseCache<Key, Value> {
    *  - if the promise was rejected, its error is thrown to the caller
    *  - if the promise is still pending, it is thrown to the caller
    *
-   * @param key 
+   * @param key
    * @param executor a pair of resolve and reject handlers passed to a promise
    * @returns the value once resolved
    * @throws an error if the promise was rejected
@@ -36,7 +40,7 @@ export default class PromiseCache<Key, Value> {
       const pending = pendingThenable<Value>();
 
       executor(key, pending.resolve, pending.reject);
-  
+
       this.thenables.set(key, pending);
       throw pending;
     }
@@ -52,16 +56,16 @@ export default class PromiseCache<Key, Value> {
     return thenable.value;
   }
 
-  resolveAll(keys: Key[], executor: Executor<Key,Value>): Value[] {
+  resolveAll(keys: Key[], executor: Executor<Key, Value>): Value[] {
     const missing = keys.filter((k) => !this.thenables.has(k));
     if (missing.length > 0) {
       missing.forEach((k) => {
         const p = pendingThenable<Value>();
         executor(k, p.resolve, p.reject);
         this.thenables.set(k, p);
-      })
+      });
     }
-    const thenables = keys.map((k) =>  this.thenables.get(k));
+    const thenables = keys.map((k) => this.thenables.get(k));
     const pending = thenables.filter((t) => t?.status === "pending");
     if (pending.length == 1) {
       throw thenables.at(0);
@@ -74,7 +78,7 @@ export default class PromiseCache<Key, Value> {
     const rejected = thenables.filter((t) => t?.status === "rejected");
     if (rejected.length > 0) {
       const reasons = rejected.map((r) => r.reason);
-      throw new Error("one or more promises was rejected", { cause: reasons })
+      throw new Error("one or more promises was rejected", { cause: reasons });
     }
 
     const fulfilled = thenables.filter((t) => t?.status === "fulfilled");
@@ -87,7 +91,7 @@ export default class PromiseCache<Key, Value> {
 
   /**
    * The status of this key's associated promise, or "?" if the key is not found.
-   * @param key 
+   * @param key
    * @returns status
    */
   status(key: Key): Status {

@@ -8,22 +8,29 @@ import { DocHandleCacheContext } from "../utils/common";
 
 export const RepoContext = React.createContext<Repo | undefined>(undefined);
 
-
 export function useRepo(): Repo {
-  const repo = useContext(RepoContext)
-  if (!repo) throw new Error("Repo was not found on RepoContext.")
-  return repo
+  const repo = useContext(RepoContext);
+  if (!repo) throw new Error("Repo was not found on RepoContext.");
+  return repo;
 }
 
-export function WithRepo({ loader, children }: { loader: React.ReactNode, children: React.ReactNode }) {
-  const isServerRender = typeof window == 'undefined';
+export function WithRepo({
+  loader,
+  children,
+}: {
+  loader: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const isServerRender = typeof window == "undefined";
   const isHydrated = useHydrated();
 
   const [repo] = useState(() => {
-    return isServerRender ? undefined : new Repo({
-      network: [new BroadcastChannelNetworkAdapter()],
-      storage: new IndexedDBStorageAdapter(),
-    });
+    return isServerRender
+      ? undefined
+      : new Repo({
+          network: [new BroadcastChannelNetworkAdapter()],
+          storage: new IndexedDBStorageAdapter(),
+        });
   });
 
   if (!isHydrated || isServerRender || !repo) {
@@ -33,9 +40,7 @@ export function WithRepo({ loader, children }: { loader: React.ReactNode, childr
   return (
     <RepoContext.Provider value={repo}>
       <DocHandleCacheContext.Provider value={new PromiseCache()}>
-        <Suspense fallback={loader}>
-          {children}
-        </Suspense>
+        <Suspense fallback={loader}>{children}</Suspense>
       </DocHandleCacheContext.Provider>
     </RepoContext.Provider>
   );

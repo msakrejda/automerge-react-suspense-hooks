@@ -11,6 +11,6 @@ export function useCreateDocument<T>() {
       const handle = repo.create(changeFn);
       return handle.documentId;
     },
-    [repo]
-  )
+    [repo],
+  );
 }

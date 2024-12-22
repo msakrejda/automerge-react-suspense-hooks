@@ -16,8 +16,11 @@ export class AssertionException extends Error {
   }
 }
 
-export function assert(assertion: boolean | (() => boolean), message: string): void {
-  const result = typeof assertion === 'boolean' ? assertion : assertion();
+export function assert(
+  assertion: boolean | (() => boolean),
+  message: string,
+): void {
+  const result = typeof assertion === "boolean" ? assertion : assertion();
   if (!result) {
     throw new AssertionException(message);
   }

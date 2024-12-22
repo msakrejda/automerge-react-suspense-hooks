@@ -9,10 +9,9 @@ export function useUpdateDocument<T>(id: Id) {
 
   return useCallback(
     (changeFn: ChangeFn<T>, options?: ChangeOptions<T> | undefined) => {
-      if (!handle) return
-      handle.change(changeFn, options)
+      if (!handle) return;
+      handle.change(changeFn, options);
     },
-    [handle]
-  )
+    [handle],
+  );
 }
-
