@@ -1,9 +1,9 @@
-import { useForcedRender } from "./useForcedRender";
+import React, { useEffect, useRef } from "react";
 
 import { describe, it, expect } from "vitest";
-
 import { render } from "@testing-library/react";
-import { useEffect, useRef } from "react";
+
+import { useForcedRender } from "./useForcedRender";
 import { pendingThenable, resolvedThenable, Thenable } from "../utils/thenable";
 
 describe("useForcedRender", () => {
@@ -17,7 +17,9 @@ describe("useForcedRender", () => {
   }) {
     const renderCount = useRef(1);
     const forceRender = useForcedRender();
-    let lastForcedRender = useRef<Thenable<void>>(resolvedThenable(undefined));
+    const lastForcedRender = useRef<Thenable<void>>(
+      resolvedThenable(undefined),
+    );
     const forceRenderFn = async () => {
       lastForcedRender.current = pendingThenable();
       forceRender();

@@ -1,8 +1,6 @@
-import React, { Suspense, useContext, useEffect, useState } from "react";
+import React, { Suspense, useContext, useState } from "react";
 
-import { Repo } from "@automerge/automerge-repo";
-import { BroadcastChannelNetworkAdapter } from "@automerge/automerge-repo-network-broadcastchannel";
-import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb";
+import { AutomergeUrl, DocHandle, Repo } from "@automerge/automerge-repo";
 import PromiseCache from "../utils/promisecache";
 import { DocHandleCacheContext } from "../utils/common";
 
@@ -15,46 +13,27 @@ export function useRepo(): Repo {
 }
 
 export function WithRepo({
+  repo,
   loader,
   children,
 }: {
+  repo?: Repo;
   loader: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const isServerRender = typeof window == "undefined";
-  const isHydrated = useHydrated();
-
-  const [repo] = useState(() => {
-    return isServerRender
-      ? undefined
-      : new Repo({
-          network: [new BroadcastChannelNetworkAdapter()],
-          storage: new IndexedDBStorageAdapter(),
-        });
+  const [promiseCache] = useState(() => {
+    return new PromiseCache<AutomergeUrl, DocHandle<unknown>>();
   });
 
-  if (!isHydrated || isServerRender || !repo) {
+  if (!repo) {
     return loader;
   }
 
   return (
     <RepoContext.Provider value={repo}>
-      <DocHandleCacheContext.Provider value={new PromiseCache()}>
+      <DocHandleCacheContext.Provider value={promiseCache}>
         <Suspense fallback={loader}>{children}</Suspense>
       </DocHandleCacheContext.Provider>
     </RepoContext.Provider>
   );
-}
-
-// Borrowed from https://github.com/sergiodxa/remix-utils/blob/main/src/react/use-hydrated.ts
-let hydrating = true;
-function useHydrated() {
-  const [hydrated, setHydrated] = useState(() => !hydrating);
-
-  useEffect(function hydrate() {
-    hydrating = false;
-    setHydrated(true);
-  }, []);
-
-  return hydrated;
 }
