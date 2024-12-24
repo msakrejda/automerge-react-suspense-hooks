@@ -56,39 +56,6 @@ export default class PromiseCache<Key, Value> {
     return thenable.value;
   }
 
-  resolveAll(keys: Key[], executor: Executor<Key, Value>): Value[] {
-    const missing = keys.filter((k) => !this.thenables.has(k));
-    if (missing.length > 0) {
-      missing.forEach((k) => {
-        const p = pendingThenable<Value>();
-        executor(k, p.resolve, p.reject);
-        this.thenables.set(k, p);
-      });
-    }
-    const thenables = keys.map((k) => this.thenables.get(k));
-    const pending = thenables.filter((t) => t?.status === "pending");
-    if (pending.length == 1) {
-      throw thenables.at(0);
-    }
-    if (pending.length > 1) {
-      const p = pendingThenable<Value[]>();
-      Promise.all(pending).then(p.resolve).catch(p.reject);
-      throw p;
-    }
-    const rejected = thenables.filter((t) => t?.status === "rejected");
-    if (rejected.length > 0) {
-      const reasons = rejected.map((r) => r.reason);
-      throw new Error("one or more promises was rejected", { cause: reasons });
-    }
-
-    const fulfilled = thenables.filter((t) => t?.status === "fulfilled");
-    if (fulfilled.length < keys.length) {
-      throw new Error("unknown promise statuses");
-    }
-
-    return fulfilled.map((t) => t.value);
-  }
-
   /**
    * The status of this key's associated promise, or "?" if the key is not found.
    * @param key
