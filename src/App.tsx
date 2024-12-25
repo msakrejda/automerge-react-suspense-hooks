@@ -4,50 +4,62 @@ import { AutomergeUrl, Repo } from "@automerge/automerge-repo";
 import { useCreateDocument } from "./hooks/useCreateDocument";
 import { useDocument } from "./hooks/useDocument";
 
-
 type DemoDocType = {
-  serial: number;
   createdAt: Date;
-}
+};
 
-function App () {
-  const [urls, setUrls] = useState<AutomergeUrl[]>([]);
-  const createDoc = useCreateDocument<DemoDocType>();
-
+function App() {
   const repo = new Repo();
-
-  function handleCreateDocument() {
-    const newDoc = createDoc({
-      serial: urls.length,
-      createdAt: new Date(),
-    });
-    setUrls(docs => docs.concat(newDoc));
-  }
 
   return (
     <WithRepo repo={repo} loader="please wait">
-      <button onClick={handleCreateDocument}>
-        Create new document
-      </button>
-      <div>
-        {urls.length === 0 ? (
-          "no documents"
-        ) : urls.map((url) => <DocView key={url} url={url} />)
-        }
-
-      </div>
+      <Main />
     </WithRepo>
   );
-};
+}
 
-function DocView({url}: {url: AutomergeUrl}) {
+function Main() {
+  const [urls, setUrls] = useState<AutomergeUrl[]>([]);
+
+  function handleCreateDocument(newUrl: AutomergeUrl) {
+    setUrls((urls) => urls.concat(newUrl));
+  }
+  return (
+    <>
+      <CreateDoc onCreate={handleCreateDocument} />
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          marginTop: "32px",
+          gap: "16px",
+        }}
+      >
+        {urls.length === 0
+          ? "no documents"
+          : urls.map((url) => <DocView key={url} url={url} />)}
+      </div>
+    </>
+  );
+}
+
+function CreateDoc({ onCreate }: { onCreate: (url: AutomergeUrl) => void }) {
+  const createDoc = useCreateDocument<DemoDocType>();
+  function handleCreateDocument() {
+    const newUrl = createDoc({
+      createdAt: new Date(),
+    });
+    onCreate(newUrl);
+  }
+
+  return <button onClick={handleCreateDocument}>Create new document</button>;
+}
+
+function DocView({ url }: { url: AutomergeUrl }) {
   const doc = useDocument<DemoDocType>(url);
   return (
-    <div>
-      <pre>
-        #{doc.serial}
-        created {doc.createdAt.toLocaleString()}
-      </pre>
+    <div style={{ border: "1px solid black", padding: "8px" }}>
+      created {doc.createdAt.toLocaleString()}
     </div>
   );
 }

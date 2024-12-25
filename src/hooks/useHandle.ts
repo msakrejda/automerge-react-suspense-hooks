@@ -7,7 +7,7 @@ import { useRepo } from "./useRepo";
  * Returns the handle once its document is available. Suspends until then.
  *
  * @param url document URL
- * @returns 
+ * @returns
  */
 export function useHandle<T>(url: AutomergeUrl) {
   const repo = useRepo();

@@ -25,5 +25,8 @@ export const DocHandleCacheContext = React.createContext<
 >(new PromiseCache());
 
 export function useDocHandleCache<V>() {
-  return useContext(DocHandleCacheContext) as PromiseCache<AutomergeUrl, DocHandle<V>>;
+  return useContext(DocHandleCacheContext) as PromiseCache<
+    AutomergeUrl,
+    DocHandle<V>
+  >;
 }

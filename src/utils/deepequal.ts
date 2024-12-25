@@ -34,10 +34,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if (typeof a === "object" && typeof b === "object") {
     return Object.entries(a as Record<string | symbol, unknown>).every(
       ([key, value]) => {
-        return deepEqual(
-          value,
-          (b as Record<string | symbol, unknown>)[key],
-        );
+        return deepEqual(value, (b as Record<string | symbol, unknown>)[key]);
       },
     );
   }

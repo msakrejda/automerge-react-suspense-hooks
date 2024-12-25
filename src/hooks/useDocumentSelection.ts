@@ -66,18 +66,23 @@ export function defaultSelector<T>(documents: DocInfo<T>[]) {
  * @param opts options (see @type UseDocumentsOpts)
  * @returns the derived Selection
  */
-export function useDocumentSelection<Document, Selection = ReturnType<typeof defaultSelector>>(
-  urls: AutomergeUrl[],
-  opts?: UseDocumentsOpts<Document, Selection>,
-) {
+export function useDocumentSelection<
+  Document,
+  Selection = ReturnType<typeof defaultSelector>,
+>(urls: AutomergeUrl[], opts?: UseDocumentsOpts<Document, Selection>) {
   const repo = useRepo();
   // Use the latest selector that was passed in without forcing a re-render when
   // it changes by putting it in a ref.
-  const selectorRef = useRef(opts?.selector ?? defaultSelector as Selector<Document, Selection>);
-  selectorRef.current = opts?.selector ?? defaultSelector as Selector<Document, Selection>;
+  const selectorRef = useRef(
+    opts?.selector ?? (defaultSelector as Selector<Document, Selection>),
+  );
+  selectorRef.current =
+    opts?.selector ?? (defaultSelector as Selector<Document, Selection>);
 
   const equal = opts?.equal ?? deepEqual;
-  const [listeners] = useState(() => new Map<AutomergeUrl, Listeners<Document>>());
+  const [listeners] = useState(
+    () => new Map<AutomergeUrl, Listeners<Document>>(),
+  );
   const prevUrls = usePrevious(urls);
   const handles = useHandlesAsync<Document>(urls);
   const [selection, setSelection] = useState(() => {
@@ -91,7 +96,10 @@ export function useDocumentSelection<Document, Selection = ReturnType<typeof def
 
   // Update the selection
   useEffect(() => {
-    if (prevUrls?.length === urls?.length && urls.every((url) => prevUrls.includes(url))) {
+    if (
+      prevUrls?.length === urls?.length &&
+      urls.every((url) => prevUrls.includes(url))
+    ) {
       return;
     }
 
@@ -108,7 +116,7 @@ export function useDocumentSelection<Document, Selection = ReturnType<typeof def
       setSelection(newSelection);
     }
 
-    function listen (handle: DocHandle<Document>) {
+    function listen(handle: DocHandle<Document>) {
       const docListeners: Listeners<Document> = {
         change: ({ doc }) => {
           if (!doc) {
@@ -125,7 +133,7 @@ export function useDocumentSelection<Document, Selection = ReturnType<typeof def
 
       const url = stringifyAutomergeUrl(handle.documentId);
       listeners.set(url, docListeners);
-    };
+    }
 
     function addDocument(url: AutomergeUrl) {
       const handle = repo.find<Document>(url);
@@ -147,7 +155,7 @@ export function useDocumentSelection<Document, Selection = ReturnType<typeof def
             );
           });
       }
-    };
+    }
 
     urls.filter((url) => !prevUrls?.includes(url)).forEach(addDocument);
 
@@ -163,11 +171,8 @@ export function useDocumentSelection<Document, Selection = ReturnType<typeof def
       handle.off("delete", docListeners.delete);
       listeners.delete(url);
     }
-    prevUrls
-      ?.filter((url) => !urls.includes(url))
-      ?.forEach(unlisten);
+    prevUrls?.filter((url) => !urls.includes(url))?.forEach(unlisten);
   }, [urls, prevUrls, listeners, repo]);
 
   return selection;
 }
-

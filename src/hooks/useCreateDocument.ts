@@ -10,7 +10,7 @@ import { stringifyAutomergeUrl } from "@automerge/automerge-repo";
  */
 export function useCreateDocument<T>() {
   const repo = useRepo();
-  repo.create()
+  repo.create();
 
   return useCallback(
     (initialValue: T) => {
