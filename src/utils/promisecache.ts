@@ -68,7 +68,7 @@ export default class PromiseCache<Key, Value> {
     if (!thenable) {
       return "?";
     }
-    return thenable?.status;
+    return thenable.status;
   }
 
   /**
