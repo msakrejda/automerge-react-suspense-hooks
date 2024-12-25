@@ -1,50 +1,24 @@
-import { DocHandle, Repo } from "@automerge/automerge-repo";
-import { Id } from "./common";
+import { AutomergeUrl, DocHandle, Repo } from "@automerge/automerge-repo";
 import PromiseCache from "./promisecache";
 
 /**
- * Return the handle once its document is available. Suspends until then.
+ * Returns the handle once its document is available. Suspends until then.
  *
- * @param id document id
- * @param repo
- * @param cache
- * @returns
+ * @param url document URL
+ * @param repo repo to resolve the handle in
+ * @param cache PromiseCache to store the result
+ * @returns the handle, once its document is available
  */
 export function resolveHandle<T>(
-  id: Id,
+  url: AutomergeUrl,
   repo: Repo,
-  cache: PromiseCache<Id, DocHandle<T>>,
+  cache: PromiseCache<AutomergeUrl, DocHandle<T>>,
 ) {
-  return cache.resolve(id, (id, resolve, reject) => {
-    if (!id) {
-      reject(new Error("missing id"));
+  return cache.resolve(url, (url, resolve, reject) => {
+    if (!url) {
+      reject(new Error("missing url"));
     }
-    const handle = repo.find<T>(id);
-    handle
-      .doc()
-      .then(() => resolve(handle))
-      .catch(reject);
-  });
-}
-
-/**
- * Return handles once all documents are available. Suspends until then.
- *
- * @param ids document ids
- * @param repo
- * @param cache
- * @returns
- */
-export function resolveHandles<T>(
-  ids: Id[],
-  repo: Repo,
-  cache: PromiseCache<Id, DocHandle<T>>,
-) {
-  return cache.resolveAll(ids, (id, resolve, reject) => {
-    if (!id) {
-      reject(new Error("missing id"));
-    }
-    const handle = repo.find<T>(id);
+    const handle = repo.find<T>(url);
     handle
       .doc()
       .then(() => resolve(handle))

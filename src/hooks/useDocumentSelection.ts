@@ -7,27 +7,50 @@ import {
   DocHandle,
   DocHandleChangePayload,
   DocHandleDeletePayload,
-  DocumentId,
   stringifyAutomergeUrl,
 } from "@automerge/automerge-repo/slim";
 import { deepEqual } from "../utils/deepequal";
 import { usePrevious } from "./usePrevious";
 import { useHandlesAsync } from "./useHandlesAsync";
 
-type DeepEqualComparator<T> = (a: T, b: T) => boolean;
-type DocInfo<T> = {
+type EqualFn<T> = (a: T, b: T) => boolean;
+export type DocInfo<T> = {
   id: AutomergeUrl;
   state: DocHandle<T>["state"];
   doc: Doc<T> | undefined;
 };
+
+type ChangeListener<T> = (p: DocHandleChangePayload<T>) => void;
+type DeleteListener<T> = (p: DocHandleDeletePayload<T>) => void;
+type Listeners<T> = { change: ChangeListener<T>; delete: DeleteListener<T> };
+
+/**
+ * Reduce a list of documents to a selection.
+ */
 type Selector<Document, Selection> = (items: DocInfo<Document>[]) => Selection;
 
+/**
+ * Options to useDocuments hook.
+ */
 type UseDocumentsOpts<Document, Selection = Document> = {
+  /**
+   * Selector to use.
+   */
   selector?: Selector<Document, Selection>;
-  deepEqual?: DeepEqualComparator<Selection>;
+  /**
+   * Equality function to use with Selections, in order to determine whether to
+   * re-render based on the new Selection.
+   */
+  equal?: EqualFn<Selection>;
 };
 
-function defaultSelector<T>(documents: DocInfo<T>[]) {
+/**
+ * Reduce a list of documents to a map of document URLs to their contents.
+ *
+ * @param documents the documents to reduce
+ * @returns a map of document URL to document contents
+ */
+export function defaultSelector<T>(documents: DocInfo<T>[]) {
   return documents.reduce<Map<AutomergeUrl, Doc<T> | undefined>>((map, doc) => {
     map.set(doc.id, doc.doc);
     return map;
@@ -35,27 +58,26 @@ function defaultSelector<T>(documents: DocInfo<T>[]) {
 }
 
 /**
+ * Reduce the given set of documents to a single Selection. Watches the
+ * specified documents for changes, but will only cause a re-render if
+ * the changes effect a change in the Selection.
  *
- * @param idsOrUrls
+ * @param urls list of documents to monitor
  * @param opts options (see @type UseDocumentsOpts)
- * @returns
+ * @returns the derived Selection
  */
-export function useDocumentSelection<Document, Selection = Document>(
+export function useDocumentSelection<Document, Selection = ReturnType<typeof defaultSelector>>(
   urls: AutomergeUrl[],
   opts?: UseDocumentsOpts<Document, Selection>,
 ) {
   const repo = useRepo();
-  const selectorRef = useRef(
-    opts?.selector ?? (defaultSelector as Selector<Document, Selection>),
-  );
-  selectorRef.current =
-    opts?.selector ?? (defaultSelector as Selector<Document, Selection>);
+  // Use the latest selector that was passed in without forcing a re-render when
+  // it changes by putting it in a ref.
+  const selectorRef = useRef(opts?.selector ?? defaultSelector as Selector<Document, Selection>);
+  selectorRef.current = opts?.selector ?? defaultSelector as Selector<Document, Selection>;
 
-  const comparatorRef = useRef(opts?.deepEqual ?? deepEqual);
-  comparatorRef.current = opts?.deepEqual ?? deepEqual;
-
-  const listeners = useRef(new Map<DocId, Listeners<Document>>());
-
+  const equal = opts?.equal ?? deepEqual;
+  const [listeners] = useState(() => new Map<AutomergeUrl, Listeners<Document>>());
   const prevUrls = usePrevious(urls);
   const handles = useHandlesAsync<Document>(urls);
   const [selection, setSelection] = useState(() => {
@@ -67,8 +89,12 @@ export function useDocumentSelection<Document, Selection = Document>(
     return selectorRef.current(currentDocs);
   });
 
-  // now update subscriptions
+  // Update the selection
   useEffect(() => {
+    if (prevUrls?.length === urls?.length && urls.every((url) => prevUrls.includes(url))) {
+      return;
+    }
+
     function updateSelection() {
       const currentDocs = handles.map((h, i) => ({
         id: urls[i],
@@ -76,17 +102,14 @@ export function useDocumentSelection<Document, Selection = Document>(
         state: h.state,
       }));
       const newSelection = selectorRef.current(currentDocs);
-      if (comparatorRef.current!(selection, newSelection)) {
+      if (equal(selection, newSelection)) {
         return;
       }
       setSelection(newSelection);
     }
 
-    const addListener = (handle: DocHandle<Document>) => {
-      const url = stringifyAutomergeUrl(handle.documentId);
-
-      // whenever a document changes, update our map
-      const listenersForDoc: Listeners<Document> = {
+    function listen (handle: DocHandle<Document>) {
+      const docListeners: Listeners<Document> = {
         change: ({ doc }) => {
           if (!doc) {
             return;
@@ -97,25 +120,25 @@ export function useDocumentSelection<Document, Selection = Document>(
           updateSelection();
         },
       };
-      handle.on("change", listenersForDoc.change);
-      handle.on("delete", listenersForDoc.delete);
+      handle.on("change", docListeners.change);
+      handle.on("delete", docListeners.delete);
 
-      listeners.current.set(url, listenersForDoc);
+      const url = stringifyAutomergeUrl(handle.documentId);
+      listeners.set(url, docListeners);
     };
 
-    // Add a new document to our map
-    const addNewDocument = (url: AutomergeUrl) => {
+    function addDocument(url: AutomergeUrl) {
       const handle = repo.find<Document>(url);
       if (handle.docSync()) {
         updateSelection();
-        addListener(handle);
+        listen(handle);
       } else {
-        // As each document loads, update our map
+        // As each document loads, update our selection
         handle
           .doc()
           .then(() => {
             updateSelection();
-            addListener(handle);
+            listen(handle);
           })
           .catch((err) => {
             console.error(
@@ -126,39 +149,25 @@ export function useDocumentSelection<Document, Selection = Document>(
       }
     };
 
-    for (const url of urls) {
-      const handle = repo.find<Document>(url);
-      if (prevUrls?.includes(url)) {
-        // the document was already in our list before.
-        // we only need to register new listeners.
-        addListener(handle);
-      } else {
-        // This is a new document that was not in our list before.
-        // We need to update its state in the documents array and register
-        // new listeners.
-        addNewDocument(url);
-      }
-    }
+    urls.filter((url) => !prevUrls?.includes(url)).forEach(addDocument);
 
-    // stop listening for changes on any documents that are no longer in the list
+    // And clean up if necessary, removing listeners
+    function unlisten(url: AutomergeUrl) {
+      const handle = repo.find<Document>(url);
+      const docListeners = listeners.get(url);
+      if (!docListeners) {
+        console.warn(`was not listening for changes to document ${url}`);
+        return;
+      }
+      handle.off("change", docListeners.change);
+      handle.off("delete", docListeners.delete);
+      listeners.delete(url);
+    }
     prevUrls
       ?.filter((url) => !urls.includes(url))
-      ?.forEach((url) => {
-        const handle = repo.find<Document>(url as AutomergeUrl);
-        const docListeners = listeners.current.get(url);
-        if (!docListeners) {
-          console.warn(`was not listening for changes to document ${url}`);
-          return;
-        }
-        handle.off("change", docListeners.change);
-        handle.off("delete", docListeners.delete);
-      });
-  }, [urls, repo]);
+      ?.forEach(unlisten);
+  }, [urls, prevUrls, listeners, repo]);
 
   return selection;
 }
 
-type DocId = DocumentId | AutomergeUrl;
-type ChangeListener<T> = (p: DocHandleChangePayload<T>) => void;
-type DeleteListener<T> = (p: DocHandleDeletePayload<T>) => void;
-type Listeners<T> = { change: ChangeListener<T>; delete: DeleteListener<T> };

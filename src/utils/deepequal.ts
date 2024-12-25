@@ -17,22 +17,31 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if ((a == null && b != null) || (a != null && b == null)) {
     return false;
   }
+  if ((a === null && b === undefined) || (a === undefined && b === null)) {
+    return false;
+  }
 
   // Both a and b are defined now, because if both were undefined, we exit at
   // the first check, and if either one, we exit at the second check.
 
-  return Object.keys(a as object).length == Object.keys(b as object).length &&
-    Array.isArray(a) &&
-    Array.isArray(b)
-    ? a.every((item, i) => deepEqual(item, b.at(i)))
-    : typeof a === "object" &&
-        typeof b === "object" &&
-        Object.entries(a as Record<string | symbol, unknown>).every(
-          ([key, value]) => {
-            return deepEqual(
-              value,
-              (b as Record<string | symbol, unknown>)[key],
-            );
-          },
+  if (Object.keys(a as object).length !== Object.keys(b as object).length) {
+    return false;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.every((item, i) => deepEqual(item, b.at(i)));
+  }
+
+  if (typeof a === "object" && typeof b === "object") {
+    return Object.entries(a as Record<string | symbol, unknown>).every(
+      ([key, value]) => {
+        return deepEqual(
+          value,
+          (b as Record<string | symbol, unknown>)[key],
         );
+      },
+    );
+  }
+
+  console.warn("Unexpected deepEqual case:", a, b);
+  return false;
 }

@@ -1,13 +1,22 @@
 import { useEffect } from "react";
 import { Doc } from "@automerge/automerge";
 
-import { useForcedUpdate } from "./useForcedRender";
+import { useForcedRender } from "./useForcedRender";
 import { useHandle } from "./useHandle";
 import { assert, DocumentDeletedException } from "../utils/exception";
 import { AutomergeUrl } from "@automerge/automerge-repo";
 
+/**
+ * Gets the specified document from the repo.
+ *
+ * Suspends until the document loads.
+ *
+ * @param url the document to load
+ * @throws @type DocumentDeletedException if the document is deleted
+ * @returns the loaded document
+ */
 export function useDocument<T>(url: AutomergeUrl): Doc<T> {
-  const rerender = useForcedUpdate();
+  const rerender = useForcedRender();
   const handle = useHandle<T>(url);
 
   useEffect(() => {

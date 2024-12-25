@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import { ChangeFn, ChangeOptions } from "@automerge/automerge";
+import { AutomergeUrl } from "@automerge/automerge-repo";
 
-import { Id } from "../utils/common";
 import { useHandle } from "./useHandle";
 
-export function useUpdateDocument<T>(id: Id) {
-  const handle = useHandle<T>(id);
+export function useUpdateDocument<T>(url: AutomergeUrl) {
+  const handle = useHandle<T>(url);
 
   return useCallback(
     (changeFn: ChangeFn<T>, options?: ChangeOptions<T> | undefined) => {

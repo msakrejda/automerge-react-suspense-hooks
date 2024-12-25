@@ -12,7 +12,7 @@
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "prettify": "eslint . --fix && prettier . --write",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest --dom"
   },
   "devDependencies": {
     "@automerge/automerge": "^2.2.8",

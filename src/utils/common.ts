@@ -8,9 +8,7 @@ import {
 import React, { useContext } from "react";
 import PromiseCache from "./promisecache";
 
-export type Id = AutomergeUrl;
-
-export function isValidId(id: unknown): id is Id {
+export function isValidId(id: unknown): id is AutomergeUrl {
   return typeof id === "string" && isValidAutomergeUrl(id);
 }
 
@@ -23,9 +21,9 @@ export function asId(id: unknown) {
 }
 
 export const DocHandleCacheContext = React.createContext<
-  PromiseCache<Id, DocHandle<unknown>>
+  PromiseCache<AutomergeUrl, DocHandle<unknown>>
 >(new PromiseCache());
 
 export function useDocHandleCache<V>() {
-  return useContext(DocHandleCacheContext) as PromiseCache<Id, DocHandle<V>>;
+  return useContext(DocHandleCacheContext) as PromiseCache<AutomergeUrl, DocHandle<V>>;
 }
