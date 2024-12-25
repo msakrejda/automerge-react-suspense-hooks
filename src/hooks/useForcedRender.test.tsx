@@ -4,7 +4,11 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
 import { useForcedRender } from "./useForcedRender";
-import { pendingThenable, resolvedThenable, Thenable } from "../utils/thenable";
+import {
+  pendingThenable,
+  fulfilledThenable,
+  Thenable,
+} from "../utils/thenable";
 
 describe("useForcedRender", () => {
   function Host({
@@ -18,7 +22,7 @@ describe("useForcedRender", () => {
     const renderCount = useRef(1);
     const forceRender = useForcedRender();
     const lastForcedRender = useRef<Thenable<void>>(
-      resolvedThenable(undefined),
+      fulfilledThenable(undefined),
     );
     const forceRenderFn = async () => {
       lastForcedRender.current = pendingThenable();

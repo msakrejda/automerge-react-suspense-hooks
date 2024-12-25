@@ -34,23 +34,25 @@ export default class PromiseCache<Key, Value> {
    * pending
    */
   resolve(key: Key, executor: Executor<Key, Value>): Value {
-    const thenable = this.thenables.get(key);
+    let thenable = this.thenables.get(key);
 
     if (!thenable) {
       const pending = pendingThenable<Value>();
+      this.thenables.set(key, pending);
 
       executor(key, pending.resolve, pending.reject);
-
-      this.thenables.set(key, pending);
-      throw pending;
-    }
-
-    if (thenable.status === "rejected") {
-      throw new Error(`promise was rejected: ${thenable.reason}`);
+      // After initial execution, control falls through below: if the executor
+      // resolved or rejected the promise synchronously, this allows us to avoid
+      // going through a "pending" state.
+      thenable = pending as Thenable<Value>;
     }
 
     if (thenable.status === "pending") {
       throw thenable;
+    }
+
+    if (thenable.status === "rejected") {
+      throw new Error(`promise was rejected: ${thenable.reason}`);
     }
 
     return thenable.value;

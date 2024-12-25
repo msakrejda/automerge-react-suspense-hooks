@@ -108,7 +108,7 @@ export function pendingThenable<T>(): PendingThenable<T> {
   return thenable;
 }
 
-export function resolvedThenable<T>(value: T): FulfilledThenable<T> {
+export function fulfilledThenable<T>(value: T): FulfilledThenable<T> {
   const promise = pendingThenable<T>();
   promise.resolve(value);
   return promise as unknown as FulfilledThenable<T>;
