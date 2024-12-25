@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { WithRepo } from "./hooks";
 import { AutomergeUrl, Repo } from "@automerge/automerge-repo";
 import { useCreateDocument } from "./hooks/useCreateDocument";

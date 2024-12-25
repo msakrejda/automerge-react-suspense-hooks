@@ -1,4 +1,6 @@
 import react from "@vitejs/plugin-react";
+import topLevelAwait from "vite-plugin-top-level-await";
+
 import path from "node:path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
@@ -7,6 +9,7 @@ import packageJson from "./package.json";
 
 export default defineConfig({
   plugins: [
+    topLevelAwait(),
     wasm(),
     react(),
     dts({
@@ -17,16 +20,15 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, "src/hooks/index.ts"),
       name: packageJson.name,
-      formats: ["es", "umd"],
+      formats: ["es"],
       fileName: (format) => `index.${format}.js`,
     },
     rollupOptions: {
-      external: ["react", "react-dom", "styled-components"],
+      external: ["react", "react-dom"],
       output: {
         globals: {
           react: "React",
           "react-dom": "ReactDOM",
-          "styled-components": "styled",
         },
       },
     },
