@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { FulfilledThenable, pendingThenable, RejectedThenable } from "./thenable";
+import {
+  FulfilledThenable,
+  pendingThenable,
+  RejectedThenable,
+} from "./thenable";
 
 describe("Thenable", () => {
   describe("pendingThenable", () => {
