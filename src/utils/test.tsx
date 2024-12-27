@@ -3,7 +3,6 @@ import React from "react";
 
 type Props = {
   children: React.ReactNode;
-  fallback: React.ReactNode;
 };
 
 export class ErrorBoundary extends React.Component<
@@ -21,7 +20,11 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.error) {
-      return this.props.fallback;
+      return (
+        <div>
+          {this.state.error.name}: {this.state.error.message}
+        </div>
+      );
     }
 
     return this.props.children;

@@ -1,27 +1,12 @@
-import { AutomergeUrl } from "@automerge/automerge-repo";
+import { AnyDocumentId } from "@automerge/automerge-repo";
+import { toAutomergeUrl } from "./automerge";
 
 export class DocumentDeletedException extends Error {
-  public readonly url: AutomergeUrl;
-  constructor(url: AutomergeUrl) {
-    super(`document ${url} was deleted`);
-    this.url = url;
+  public readonly id: AnyDocumentId;
+  constructor(id: AnyDocumentId) {
+    const docId = toAutomergeUrl(id);
+    super(`document ${docId} was deleted`);
+    this.id = id;
     this.name = this.constructor.name;
-  }
-}
-
-export class AssertionException extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-  }
-}
-
-export function assert(
-  assertion: boolean | (() => boolean),
-  message: string,
-): void {
-  const result = typeof assertion === "boolean" ? assertion : assertion();
-  if (!result) {
-    throw new AssertionException(message);
   }
 }

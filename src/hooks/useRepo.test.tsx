@@ -46,10 +46,13 @@ describe("useRepo", () => {
       return null;
     }
     const result = render(
-      <ErrorBoundary fallback="oh snap">
+      <ErrorBoundary>
         <DocConsumer />
       </ErrorBoundary>,
     );
-    expect(result.getByText("oh snap")).toBeDefined();
+
+    expect(
+      result.getByText("Error: Repo was not found on RepoContext"),
+    ).toBeDefined();
   });
 });
