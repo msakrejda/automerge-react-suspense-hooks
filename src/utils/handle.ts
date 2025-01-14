@@ -6,6 +6,10 @@ import {
 } from "@automerge/automerge-repo";
 import PromiseCache from "./promisecache";
 import { toAutomergeUrl } from "./automerge";
+import {
+  DocumentDeletedException,
+  DocumentUnavailableException,
+} from "./exception";
 
 /**
  * Returns the handle once its document is available. Suspends until then.
@@ -32,8 +36,16 @@ export function resolveHandle<T>(
     }
 
     handle
-      .whenReady()
-      .then(() => resolve(handle))
+      .whenReady(["ready", "deleted", "unavailable"])
+      .then(() => {
+        if (handle.inState(["unavailable"])) {
+          reject(new DocumentUnavailableException(id));
+        } else if (handle.inState(["deleted"])) {
+          reject(new DocumentDeletedException(id));
+        } else {
+          resolve(handle);
+        }
+      })
       .catch(reject);
   });
 }

@@ -2,8 +2,8 @@ import React, { useState } from "react";
 
 import { DummyStorageAdapter } from "@automerge/automerge-repo/helpers/DummyStorageAdapter.js";
 
-import { describe, it, expect } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, cleanup } from "@testing-library/react";
 
 import { generateAutomergeUrl, Repo } from "@automerge/automerge-repo";
 import { useRepo, WithRepo } from "./useRepo";
@@ -15,12 +15,23 @@ type DummyDoc = {
 };
 
 describe("useDocument", () => {
-  function Host({ children }: { children: React.ReactNode }) {
+  afterEach(() => {
+    cleanup();
+  });
+
+  function Host({
+    children,
+    repo: optRepo,
+  }: {
+    children: React.ReactNode;
+    repo?: Repo;
+  }) {
     const [repo] = useState(
-      () =>
-        new Repo({
-          storage: new DummyStorageAdapter(),
-        }),
+      optRepo ??
+        (() =>
+          new Repo({
+            storage: new DummyStorageAdapter(),
+          })),
     );
     return (
       <WithRepo repo={repo} loader="loading">
@@ -35,14 +46,43 @@ describe("useDocument", () => {
       const doc = useDocument<DummyDoc>(docId);
       return `loaded doc ${doc.num}`;
     }
-    const result = render(
+    const { container } = render(
       <Host>
         <DocConsumer />
       </Host>,
     );
 
-    expect(result.getByText(`loading`)).toBeDefined();
-    expect(result.queryByText(`loaded doc`)).toBeNull();
+    expect(container).toHaveTextContent("loading");
+    expect(container).not.toHaveTextContent("loaded doc");
+  });
+
+  it("throws an error if the document is not available from any peer", async () => {
+    const docId = generateAutomergeUrl();
+    const repo = new Repo();
+    function DocConsumer() {
+      const doc = useDocument<DummyDoc>(docId);
+      return `loaded doc ${doc.num}`;
+    }
+    const result = render(
+      <Host repo={repo}>
+        <ErrorBoundary>
+          <DocConsumer />
+        </ErrorBoundary>
+      </Host>,
+    );
+
+    const handle = repo.find(docId);
+    await handle.whenReady(["unavailable"]);
+
+    result.rerender(
+      <Host repo={repo}>
+        <ErrorBoundary>
+          <DocConsumer />
+        </ErrorBoundary>
+      </Host>,
+    );
+
+    expect(result.container).toHaveTextContent("DocumentUnavailableException");
   });
 
   it("returns the document once available", async () => {
@@ -59,6 +99,35 @@ describe("useDocument", () => {
       </Host>,
     );
 
-    expect(result.getByText("loaded doc 42")).toBeDefined();
+    expect(result.container).toHaveTextContent("loaded doc 42");
+  });
+
+  it("throws an error if the document is deleted", async () => {
+    const repo = new Repo({
+      storage: new DummyStorageAdapter(),
+    });
+    const handle = repo.create<DummyDoc>({ num: 42 });
+    function DocConsumer() {
+      const doc = useDocument<DummyDoc>(handle.documentId);
+      return `loaded doc ${doc.num}`;
+    }
+    const result = render(
+      <Host repo={repo}>
+        <ErrorBoundary>
+          <DocConsumer />
+        </ErrorBoundary>
+      </Host>,
+    );
+    repo.delete(handle.documentId);
+
+    result.rerender(
+      <Host repo={repo}>
+        <ErrorBoundary>
+          <DocConsumer />
+        </ErrorBoundary>
+      </Host>,
+    );
+
+    expect(result.container).toHaveTextContent(/DocumentDeletedException/);
   });
 });
