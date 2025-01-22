@@ -30,9 +30,16 @@ export function resolveHandle<T>(
       reject(new Error("missing url"));
     }
     const handle = repo.find<T>(url);
-
     if (handle.isReady()) {
       resolve(handle);
+    }
+
+    if (handle.isDeleted()) {
+      reject(new DocumentDeletedException(id));
+    }
+
+    if (handle.isUnavailable()) {
+      reject(new DocumentUnavailableException(id));
     }
 
     handle

@@ -4,15 +4,15 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
 import { generateAutomergeUrl, Repo } from "@automerge/automerge-repo";
-import { useRepo, WithRepo } from "./useRepo";
+import { WithRepo } from "./useRepo";
 import { ErrorBoundary } from "../utils/test";
-import { useDocument } from "./useDocument";
+import { useHandle } from "./useHandle";
 
 type DummyDoc = {
   num: number;
 };
 
-describe("useDocument", () => {
+describe("useHandle", () => {
   function Host({
     children,
     repo: optRepo,
@@ -31,8 +31,8 @@ describe("useDocument", () => {
   it("suspends if the document is not yet available", async () => {
     const docId = generateAutomergeUrl();
     function DocConsumer() {
-      const doc = useDocument<DummyDoc>(docId);
-      return `loaded doc ${doc.num}`;
+      const doc = useHandle<DummyDoc>(docId);
+      return `got handle for ${doc.documentId}`;
     }
     const { container } = render(
       <Host>
@@ -41,15 +41,15 @@ describe("useDocument", () => {
     );
 
     expect(container).toHaveTextContent("loading");
-    expect(container).not.toHaveTextContent("loaded doc");
+    expect(container).not.toHaveTextContent("got handle for");
   });
 
   it("throws an error if the document is not available from any peer", async () => {
     const docId = generateAutomergeUrl();
     const repo = new Repo();
     function DocConsumer() {
-      const doc = useDocument<DummyDoc>(docId);
-      return `loaded doc ${doc.num}`;
+      const handle = useHandle<DummyDoc>(docId);
+      return `got handle for ${handle.documentId}`;
     }
     const result = render(
       <Host repo={repo}>
@@ -69,36 +69,40 @@ describe("useDocument", () => {
     expect(result.container).toHaveTextContent("DocumentUnavailableException");
   });
 
-  it("returns the document once available", async () => {
-    function DocConsumer() {
-      const repo = useRepo();
-      const handle = repo.create<DummyDoc>({ num: 42 });
-
-      const doc = useDocument<DummyDoc>(handle.documentId);
-      return `loaded doc ${doc.num}`;
-    }
-    const result = render(
-      <Host>
-        <DocConsumer />
-      </Host>,
-    );
-
-    expect(result.container).toHaveTextContent("loaded doc 42");
-  });
-
-  it("throws an error if the document is deleted", async () => {
+  it("returns the handle once its document is available", async () => {
     const repo = new Repo();
-    const handle = repo.create<DummyDoc>({ num: 42 });
+    const docHandle = repo.create<DummyDoc>({ num: 42 });
+
     function DocConsumer() {
-      const doc = useDocument<DummyDoc>(handle.documentId);
-      return `loaded doc ${doc.num}`;
+      const handle = useHandle<DummyDoc>(docHandle.documentId);
+      return `got handle for ${handle.documentId}`;
     }
     const result = render(
       <Host repo={repo}>
         <DocConsumer />
       </Host>,
     );
-    repo.delete(handle.documentId);
+
+    expect(result.container).toHaveTextContent(
+      `got handle for ${docHandle.documentId}`,
+    );
+  });
+
+  it("throws an error if the document is deleted", async () => {
+    const repo = new Repo();
+    const docHandle = repo.create<DummyDoc>({ num: 42 });
+    function DocConsumer() {
+      const handle = useHandle<DummyDoc>(docHandle.documentId);
+      return `got handle for ${handle.documentId}`;
+    }
+    const result = render(
+      <Host repo={repo}>
+        <DocConsumer />
+      </Host>,
+    );
+    repo.delete(docHandle.documentId);
+
+    await docHandle.whenReady(["deleted"]);
 
     result.rerender(
       <Host repo={repo}>

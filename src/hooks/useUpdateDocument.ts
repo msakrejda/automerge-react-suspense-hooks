@@ -8,7 +8,7 @@ export function useUpdateDocument<T>(url: AutomergeUrl) {
   const handle = useHandle<T>(url);
 
   return useCallback(
-    (changeFn: ChangeFn<T>, options?: ChangeOptions<T> | undefined) => {
+    (changeFn: ChangeFn<T>, options?: ChangeOptions<T>) => {
       if (!handle) return;
       handle.change(changeFn, options);
     },
