@@ -1,4 +1,3 @@
-import { Repo } from "@automerge/automerge-repo";
 import React from "react";
 
 type Props = {
@@ -29,8 +28,4 @@ export class ErrorBoundary extends React.Component<
 
     return this.props.children;
   }
-}
-
-export function makeRepo() {
-  return new Repo({});
 }

@@ -11,7 +11,6 @@ import {
 } from "@automerge/automerge-repo/slim";
 import { deepEqual } from "../utils/deepequal";
 import { usePrevious } from "./usePrevious";
-import { useHandlesAsync } from "./useHandlesAsync";
 
 type EqualFn<T> = (a: T, b: T) => boolean;
 export type DocInfo<T> = {
@@ -84,7 +83,9 @@ export function useDocumentSelection<
     () => new Map<AutomergeUrl, Listeners<Document>>(),
   );
   const prevUrls = usePrevious(urls);
-  const handles = useHandlesAsync<Document>(urls);
+  const handles = urls.map((url) => {
+    return repo.find<Document>(url);
+  });
   const [selection, setSelection] = useState(() => {
     const currentDocs = handles.map((h, i) => ({
       id: urls[i],
