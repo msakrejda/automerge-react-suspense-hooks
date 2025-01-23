@@ -15,11 +15,6 @@ import { toAutomergeUrl } from "../utils/automerge";
 import { useRepo } from "./useRepo";
 
 type EqualFn<T> = (a: T, b: T) => boolean;
-export type DocInfo<T> = {
-  id: AutomergeUrl;
-  state: DocHandle<T>["state"];
-  doc: Doc<T> | undefined;
-};
 
 type ChangeListener<T> = (p: DocHandleChangePayload<T>) => void;
 type DeleteListener<T> = (p: DocHandleDeletePayload<T>) => void;
@@ -28,7 +23,9 @@ type Listeners<T> = { change: ChangeListener<T>; delete: DeleteListener<T> };
 /**
  * Reduce a list of documents to a selection.
  */
-type Selector<Document, Selection> = (items: DocInfo<Document>[]) => Selection;
+type Selector<Document, Selection> = (
+  items: DocHandle<Document>[],
+) => Selection;
 
 /**
  * Options to useDocuments hook.
@@ -51,9 +48,9 @@ type UseDocumentsOpts<Document, Selection = Document> = {
  * @param documents the documents to reduce
  * @returns a map of document URL to document contents
  */
-export function defaultSelector<T>(documents: DocInfo<T>[]) {
+export function defaultSelector<T>(documents: DocHandle<T>[]) {
   return documents.reduce<Map<AutomergeUrl, Doc<T> | undefined>>((map, doc) => {
-    map.set(doc.id, doc.doc);
+    map.set(doc.url, doc.docSync());
     return map;
   }, new Map<AutomergeUrl, Doc<T>>());
 }
@@ -74,6 +71,7 @@ export function useDocumentSelection<
   const repo = useRepo();
   // Use the latest selector that was passed in without forcing a re-render when
   // it changes by putting it in a ref.
+  // TODO: Is this a bad idea?
   const selectorRef = useRef(
     opts?.selector ?? (defaultSelector as Selector<Document, Selection>),
   );
@@ -91,12 +89,7 @@ export function useDocumentSelection<
     });
   }, ids);
   const [selection, setSelection] = useState(() => {
-    const currentDocs = handles.map((h) => ({
-      id: h.url,
-      doc: h.docSync(),
-      state: h.state,
-    }));
-    return selectorRef.current(currentDocs);
+    return selectorRef.current(handles);
   });
 
   // Update the selection
@@ -112,12 +105,7 @@ export function useDocumentSelection<
     }
 
     function updateSelection() {
-      const currentDocs = handles.map((h) => ({
-        id: h.url,
-        doc: h.docSync(),
-        state: h.state,
-      }));
-      const newSelection = selectorRef.current(currentDocs);
+      const newSelection = selectorRef.current(handles);
       if (equal(selection, newSelection)) {
         return;
       }
