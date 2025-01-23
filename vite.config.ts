@@ -1,10 +1,11 @@
-import react from "@vitejs/plugin-react";
-import topLevelAwait from "vite-plugin-top-level-await";
-
 import path from "node:path";
+
 import { defineConfig } from "vitest/config";
+import topLevelAwait from "vite-plugin-top-level-await";
+import react from "@vitejs/plugin-react";
 import dts from "vite-plugin-dts";
 import wasm from "vite-plugin-wasm";
+
 import packageJson from "./package.json";
 
 export default defineConfig({
