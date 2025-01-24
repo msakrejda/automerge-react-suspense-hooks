@@ -30,6 +30,30 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.every((item, i) => deepEqual(item, b.at(i)));
   }
+  if (a instanceof Map && b instanceof Map) {
+    if (a.size !== b.size) {
+      return false;
+    }
+    for (const [k, aVal] of a) {
+      const bVal = b.get(k);
+      const equal = deepEqual(aVal, bVal);
+      if (!equal) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (a instanceof Set && b instanceof Set) {
+    if (a.size !== b.size) {
+      return false;
+    }
+    for (const entry of a) {
+      if (!b.has(entry)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   if (typeof a === "object" && typeof b === "object") {
     return Object.entries(a as Record<string | symbol, unknown>).every(
