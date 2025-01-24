@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AnyDocumentId,
@@ -7,12 +7,11 @@ import {
   DocHandle,
   DocHandleChangePayload,
   DocHandleDeletePayload,
-  stringifyAutomergeUrl,
 } from "@automerge/automerge-repo/slim";
 import { deepEqual } from "../utils/deepequal";
 import { usePrevious } from "./usePrevious";
-import { toAutomergeUrl } from "../utils/automerge";
 import { useRepo } from "./useRepo";
+import { useForcedRender } from "./useForcedRender";
 
 type EqualFn<T> = (a: T, b: T) => boolean;
 
@@ -45,14 +44,17 @@ type UseDocumentsOpts<Document, Selection = Document> = {
 /**
  * Reduce a list of documents to a map of document URLs to their contents.
  *
- * @param documents the documents to reduce
+ * @param documents handles of the documents to reduce
  * @returns a map of document URL to document contents
  */
 export function defaultSelector<T>(documents: DocHandle<T>[]) {
-  return documents.reduce<Map<AutomergeUrl, Doc<T> | undefined>>((map, doc) => {
-    map.set(doc.url, doc.docSync());
-    return map;
-  }, new Map<AutomergeUrl, Doc<T>>());
+  return documents.reduce<Map<AutomergeUrl, Doc<T> | undefined>>(
+    (map, handle) => {
+      map.set(handle.url, handle.docSync());
+      return map;
+    },
+    new Map<AutomergeUrl, Doc<T>>(),
+  );
 }
 
 /**
@@ -69,6 +71,7 @@ export function useDocumentSelection<
   Selection = ReturnType<typeof defaultSelector<Document>>,
 >(ids: AnyDocumentId[], opts?: UseDocumentsOpts<Document, Selection>) {
   const repo = useRepo();
+  const rerender = useForcedRender();
   // Use the latest selector that was passed in without forcing a re-render when
   // it changes by putting it in a ref.
   // TODO: Is this a bad idea?
@@ -82,34 +85,34 @@ export function useDocumentSelection<
   const [listeners] = useState(
     () => new Map<AutomergeUrl, Listeners<Document>>(),
   );
-  const prevIds = usePrevious(ids);
   const handles = useMemo(() => {
     return ids.map((id) => {
       return repo.find<Document>(id);
     });
   }, ids);
-  const [selection, setSelection] = useState(() => {
-    return selectorRef.current(handles);
-  });
+  const prevHandles = usePrevious(handles);
 
-  // Update the selection
+  const addedHandles = useMemo(() => {
+    return handles.filter((handle) => !prevHandles?.includes(handle));
+  }, [handles, prevHandles]);
+  const removedHandles = useMemo(() => {
+    return prevHandles?.filter((handle) => !handles.includes(handle)) ?? [];
+  }, [handles, prevHandles]);
+
+  const selection = useRef(selectorRef.current(handles));
+
+  const updateSelection = useCallback(() => {
+    const newSelection = selectorRef.current(handles);
+    if (equal(selection.current, newSelection)) {
+      return;
+    }
+    selection.current = newSelection;
+    rerender();
+  }, [handles, rerender, selectorRef, selection]);
+
   useEffect(() => {
-    if (!prevIds) {
+    if (addedHandles.length === 0) {
       return;
-    }
-    if (
-      prevIds.length === ids.length &&
-      ids.every((id) => prevIds.includes(id))
-    ) {
-      return;
-    }
-
-    function updateSelection() {
-      const newSelection = selectorRef.current(handles);
-      if (equal(selection, newSelection)) {
-        return;
-      }
-      setSelection(newSelection);
     }
 
     function listen(handle: DocHandle<Document>) {
@@ -127,39 +130,19 @@ export function useDocumentSelection<
       handle.on("change", docListeners.change);
       handle.on("delete", docListeners.delete);
 
-      const url = stringifyAutomergeUrl(handle.documentId);
-      listeners.set(url, docListeners);
+      listeners.set(handle.url, docListeners);
     }
 
-    function addDocument(id: AnyDocumentId) {
-      const url = toAutomergeUrl(id);
-      const handle = repo.find<Document>(url);
-      if (handle.docSync()) {
-        updateSelection();
-        listen(handle);
-      } else {
-        // As each document loads, update our selection
-        handle
-          .doc()
-          .then(() => {
-            updateSelection();
-            listen(handle);
-          })
-          .catch((err) => {
-            console.error(
-              `Error loading document ${url} in useDocuments: `,
-              err,
-            );
-          });
-      }
+    addedHandles.forEach(listen);
+  }, [addedHandles, listeners]);
+
+  useEffect(() => {
+    if (removedHandles.length === 0) {
+      return;
     }
 
-    ids.filter((id) => !prevIds?.includes(id)).forEach(addDocument);
-
-    // And clean up if necessary, removing listeners
-    function unlisten(id: AnyDocumentId) {
-      const url = toAutomergeUrl(id);
-      const handle = repo.find<Document>(url);
+    function unlisten(handle: DocHandle<Document>) {
+      const url = handle.url;
       const docListeners = listeners.get(url);
       if (!docListeners) {
         console.warn(`was not listening for changes to document ${url}`);
@@ -169,8 +152,9 @@ export function useDocumentSelection<
       handle.off("delete", docListeners.delete);
       listeners.delete(url);
     }
-    prevIds?.filter((id) => !ids.includes(id))?.forEach(unlisten);
-  }, [ids, prevIds, handles, listeners, repo]);
 
-  return selection;
+    removedHandles.forEach(unlisten);
+  }, [removedHandles, repo, listeners]);
+
+  return selection.current;
 }

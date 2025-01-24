@@ -48,6 +48,38 @@ describe("useDocumentSelection", () => {
     expect(selection!.get(handle.url)).toEqual({ num: 42 });
   });
 
+  it("is updated when the source documents are updated", async () => {
+    let selection: Map<AutomergeUrl, Doc<DummyDoc> | undefined> | null = null;
+    const repo = new Repo();
+    const handle = repo.create<DummyDoc>({ num: 42 });
+    function DocConsumer() {
+      const doc = useDocumentSelection<DummyDoc>([handle.documentId]);
+      selection = doc;
+      return `loaded selection`;
+    }
+    const { rerender } = render(
+      <Host repo={repo}>
+        <DocConsumer />
+      </Host>,
+    );
+
+    expect(selection).toBeDefined();
+    expect(selection!.size).toEqual(1);
+    expect(selection!.get(handle.url)).toEqual({ num: 42 });
+
+    handle.change((doc) => (doc.num = 7));
+
+    rerender(
+      <Host repo={repo}>
+        <DocConsumer />
+      </Host>,
+    );
+
+    expect(selection).toBeDefined();
+    expect(selection!.size).toEqual(1);
+    expect(selection!.get(handle.url)).toEqual({ num: 7 });
+  });
+
   it("returns an arbitrary derived value with a custom selector", async () => {
     const selection = {};
     const selector = vitest.fn().mockReturnValue(selection);
