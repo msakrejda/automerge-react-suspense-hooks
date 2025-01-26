@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 
 import { useRepo } from "./useRepo";
-import { stringifyAutomergeUrl } from "@automerge/automerge-repo";
 
 /**
  * Returns a function that can be used to create documents in the current repo.
@@ -14,7 +13,7 @@ export function useCreateDocument<T>() {
   return useCallback(
     (initialValue: T) => {
       const handle = repo.create(initialValue);
-      return stringifyAutomergeUrl(handle.documentId);
+      return handle.url;
     },
     [repo],
   );
