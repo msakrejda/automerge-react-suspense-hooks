@@ -7,11 +7,11 @@ import { useRepo } from "./useRepo";
  *
  * @returns function that accepts an initial value and returns the new document's url
  */
-export function useCreateDocument<T>() {
+export function useCreateDocument<Document>() {
   const repo = useRepo();
 
   return useCallback(
-    (initialValue: T) => {
+    (initialValue: Document) => {
       const handle = repo.create(initialValue);
       return handle.url;
     },

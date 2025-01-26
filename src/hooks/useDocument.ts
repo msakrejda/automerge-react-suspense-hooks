@@ -8,17 +8,16 @@ import { DocumentDeletedException } from "../utils/exception";
 import { assert } from "../utils/assert";
 
 /**
- * Gets the specified document from the repo.
- *
- * Suspends until the document loads.
+ * Retrieves the current state of the document (and causes a re-render whenever
+ * the document changes). Suspends until the document is loaded.
  *
  * @param id the document to load
  * @throws @type DocumentDeletedException if the document is deleted
  * @returns the loaded document
  */
-export function useDocument<T>(id: AnyDocumentId): Doc<T> {
+export function useDocument<Document>(id: AnyDocumentId): Doc<Document> {
   const rerender = useForcedRender();
-  const handle = useHandle<T>(id);
+  const handle = useHandle<Document>(id);
 
   useEffect(() => {
     // We don't need to rerender for the initial doc: since we wait for the
